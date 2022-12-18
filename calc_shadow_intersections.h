@@ -11,7 +11,6 @@
 #include "quartic.h"
 #include "orbit_params.h"
 
-using complex = std::complex<scalar>;
 using std::sin;
 using std::cos;
 
