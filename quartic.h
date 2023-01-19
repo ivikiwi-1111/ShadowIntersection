@@ -14,6 +14,7 @@
 
 using scalar = double;
 using complex = std::complex<scalar>;
+using namespace std::complex_literals;
 
 
 complex complex_cbrt(complex const &z) {
@@ -21,7 +22,9 @@ complex complex_cbrt(complex const &z) {
 }
 
 
-std::array<complex, 4> quartic_solver(scalar const &b, scalar const &c, scalar const &d, scalar const &e) {
+/**fixme**/
+
+std::array<complex, 4> quartic_solver(complex const  &b, complex const &c, complex const &d,complex const &e) {
 
     complex const Q1 = c * c - 3. * b * d + 12. * e;
     complex const Q2 = 2. * c * c * c - 9. * b * c * d + 27. * d * d + 27. * b * b * e - 72. * c * e;

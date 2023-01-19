@@ -27,7 +27,6 @@ struct Orbit {
     Time t0;
 };
 
-
 constexpr scalar earthMu = 3.986004418e14;
 constexpr scalar PI = 3.1415926535;
 constexpr scalar earthR = 6371e3;

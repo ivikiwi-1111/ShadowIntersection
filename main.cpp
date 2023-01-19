@@ -24,10 +24,7 @@ int main() {
             {2.66306016e+07, 9.70516730e+06, 0.00000000e+00, -2.34551642e+03, 1.33025620e+03, 0.00000000e+00, 0});
 
     //epsilon is equal earthR/earth2sunR and depends on time
-    auto res = calc_shadow_intersection_times(orbit, 4.2666e-6);
-
-    std::cout << "Intersection times:" << std::endl;
-    std::cout << res[0] << " s." << std::endl << res[1] << " s." << std::endl;
+    calc_shadow_intersection_times(orbit, 4.2666e-6);
 
     return 0;
 }
