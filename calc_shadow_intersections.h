@@ -8,6 +8,8 @@
 #endif //SHADOW_INTERSECTION_MODIFIED_CALC_SHADOW_INTERSECTIONS_H
 
 #include <vector>
+#include <limits>
+#include <algorithm>
 #include "quartic.h"
 #include "orbit_params.h"
 
@@ -18,15 +20,15 @@ scalar sq(const scalar &a) {
     return a * a;
 }
 
-void calc_shadow_intersection_times(Orbit const &orb, scalar const epsilon) {
-    auto const sin_eps = sin(epsilon);
-    auto const cos_eps = cos(epsilon);
-    auto c_ = -orb.a * orb.e;
+std::array<scalar, 4> calc_shadow_intersection_times(Orbit const &orb, scalar const epsilon) {
+    scalar const sin_eps = sin(epsilon);
+    scalar const cos_eps = cos(epsilon);
+    vec3 const c_ = -orb.a * orb.e;
 
 
-    auto const a1 = orb.a.x, a2 = orb.a.y, a3 = orb.a.z;
-    auto const b1 = orb.b.x, b2 = orb.b.y, b3 = orb.b.z;
-    auto const c1 = c_.x, c2 = c_.y, c3 = c_.z;
+    scalar const a1 = orb.a.x, a2 = orb.a.y, a3 = orb.a.z;
+    scalar const b1 = orb.b.x, b2 = orb.b.y, b3 = orb.b.z;
+    scalar const c1 = c_.x, c2 = c_.y, c3 = c_.z;
 
     complex const A = (
             (sq(a1) + sq(a2) + sq(a3))*sq(cos_eps) -
@@ -63,12 +65,25 @@ void calc_shadow_intersection_times(Orbit const &orb, scalar const epsilon) {
             sq(a1)  + sq(b1) -
             (sq(b1) + sq(b2) + sq(b3))*sq(cos_eps)   +
             (a1*b1 + a2*b2 + a3*b3)*sq(cos_eps)*2i - a1*b1*2i
-            )/4.;;
+            )/4.;
 
 
-    auto v = quartic_solver(B / A, C / A, D / A, E / A);
-    for(auto it:v){
-        std::cout << abs(it) << " ";
+    auto const solution = quartic_solver(B / A, C / A, D / A, E / A);
+    std::array<scalar, 4> r{-1, -1, -1, -1};
+
+    for(auto i = 0; i<4; i++){
+        if(std::numeric_limits<scalar>::epsilon() > fabs(fabs(solution[i]) - 1)){
+            scalar sin_fi = solution[i].imag();
+            scalar cos_fi = solution[i].real();
+            if(c1 + a1*cos_fi + b1*sin_fi > 0){
+                scalar const E1 = atan2(sin_fi, cos_fi);
+                scalar const ndt = (E1 - orb.E0) - orb.e * (std::sin(E1) - std::sin(orb.E0));
+                scalar const n = sqrt(pow(dot(orb.a, orb.a), -1.5f) * earthMu);
+                r[i] = ndt > 0 ? orb.t0 + ndt / n : (orb.t0 + ndt + 2 * PI) / n;
+
+            }
+        }
     }
-
+    std::sort(r.begin(), r.end());
+    return r;
 }
