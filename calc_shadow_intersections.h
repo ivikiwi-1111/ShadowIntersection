@@ -8,7 +8,6 @@
 #endif //SHADOW_INTERSECTION_MODIFIED_CALC_SHADOW_INTERSECTIONS_H
 
 #include <vector>
-#include <limits>
 #include <algorithm>
 #include "quartic.h"
 #include "orbit_params.h"
@@ -20,7 +19,8 @@ scalar sq(const scalar &a) {
     return a * a;
 }
 
-std::array<scalar, 4> calc_shadow_intersection_times(Orbit const &orb, scalar const epsilon) {
+
+std::pair<std::array<scalar, 4>, unsigned short> calc_shadow_intersection_anomaly_sorted(Orbit const &orb, scalar const epsilon) {
     scalar const sin_eps = sin(epsilon);
     scalar const cos_eps = cos(epsilon);
     vec3 const c_ = -orb.a * orb.e;
@@ -68,26 +68,38 @@ std::array<scalar, 4> calc_shadow_intersection_times(Orbit const &orb, scalar co
             (a1*b1 + a2*b2 + a3*b3)*sq(cos_eps)*2i - a1*b1*2i
             )/4.;
 
-    //Quartic solver call
+
+    //Quartic solver call -> returns complex solutions of quartic eq:
     auto const solution = quartic_solver(B / A, C / A, D / A, E / A);
-    std::array<scalar, 4> r{-1, -1, -1, -1};
 
-    //Get times till intersection
-    for(auto i = 0; i<4; i++){
-        //fi in exp(i fi) is real <=> abs(exp) = 1
-        if(std::numeric_limits<scalar>::epsilon() > fabs(fabs(solution[i]) - 1)){
-            scalar sin_fi = solution[i].imag();
-            scalar cos_fi = solution[i].real();
-            //Sat is in shadow if x>0
-            if(c1 + a1*cos_fi + b1*sin_fi > 0){
-                scalar const E1 = atan2(sin_fi, cos_fi);
-                scalar const ndt = (E1 - orb.E0) - orb.e * (std::sin(E1) - std::sin(orb.E0));
-                scalar const n = sqrt(pow(dot(orb.a, orb.a), -1.5f) * earthMu);
-                r[i] = ndt > 0 ? orb.t0 + ndt / n : (orb.t0 + ndt + 2 * PI) / n;
 
+    unsigned short counter = 0;
+    std::array<scalar, 4> anomaly{};
+    //Get the intersection anomalies
+    for(auto it:solution){
+        //abs(exp) = 1 <=> fi is real
+        if( fabs(fabs(it) - 1) < std::numeric_limits<scalar>::epsilon()){
+            scalar E0 = atan2(it.imag(), it.real());
+            //x>0 <=> point is in shadow
+            if(a1*cos(E0)+b1*sin(E0)+c1 > 0){
+                anomaly[counter] = E0>orb.E0 ? E0 : E0+2*PI;
+                counter ++;
             }
         }
     }
-    std::sort(r.begin(), r.end());
-    return r;
+    std::sort(anomaly.begin(), anomaly.begin()+counter);
+    return std::make_pair(anomaly, counter);
+}
+
+//already sorted
+std::pair<std::array<scalar, 4>, unsigned short> get_intersection_times(Orbit const &orb, scalar const epsilon){
+    auto const v = calc_shadow_intersection_anomaly_sorted(orb, epsilon);
+    std::array<scalar, 4> times{};
+
+    for(auto i = 0; i<v.second; ++i){
+        scalar const ndt = (v.first[i] - orb.E0) - orb.e * (sin(v.first[i]) - sin(orb.E0));
+        scalar const n = sqrt(pow(dot(orb.a, orb.a), -1.5f) * earthMu);
+        times[i] = orb.t0 + ndt / n;
+    }
+    return make_pair(times, v.second);
 }

@@ -11,6 +11,7 @@
 #include <complex>
 #include <array>
 #include <vector>
+#include <limits>
 
 using scalar = double;
 using complex = std::complex<scalar>;
@@ -36,11 +37,9 @@ std::array<complex, 4> quartic_solver(complex const  &b, complex const &c, compl
     complex const Q7 = 2. * std::sqrt(Q4 / 12. + Q6);
 
 
-    return std::array<complex, 4>{
-            (-b - Q7 - std::sqrt(4. * Q4 / 6. - 4. * Q6 - Q3 / Q7)) / 4.,
+    return {(-b - Q7 - std::sqrt(4. * Q4 / 6. - 4. * Q6 - Q3 / Q7)) / 4.,
             (-b - Q7 + std::sqrt(4. * Q4 / 6. - 4. * Q6 - Q3 / Q7)) / 4.,
             (-b + Q7 - std::sqrt(4. * Q4 / 6. - 4. * Q6 + Q3 / Q7)) / 4.,
             (-b + Q7 + std::sqrt(4. * Q4 / 6. - 4. * Q6 + Q3 / Q7)) / 4.
     };
-
 }
