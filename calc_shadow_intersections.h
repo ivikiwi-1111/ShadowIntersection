@@ -19,69 +19,53 @@ scalar sq(const scalar &a) {
     return a * a;
 }
 
-
-std::pair<std::array<scalar, 4>, unsigned short> calc_shadow_intersection_anomaly_sorted(Orbit const &orb, scalar const epsilon) {
+std::array<complex, 4> calc_coefficients(Orbit const &orb, scalar const epsilon){
     scalar const sin_eps = sin(epsilon);
     scalar const cos_eps = cos(epsilon);
-    vec3 const c_ = -orb.a * orb.e;
+    vec3 const c = -orb.a * orb.e;
 
     //Substitution params coord_i = c_i + a_i cos(fi) + b_i sin(fi)  (fi -> 0 to 2pi)
-    scalar const a1 = orb.a.x, a2 = orb.a.y, a3 = orb.a.z;
-    scalar const b1 = orb.b.x, b2 = orb.b.y, b3 = orb.b.z;
-    scalar const c1 = c_.x, c2 = c_.y, c3 = c_.z;
+    scalar const a1 = orb.a.x;
+    scalar const b1 = orb.b.x;
+    scalar const c1 = c.x;
 
     //Quartic eq. A t^4 + B t^3 + C t^2 + D t + E = 0
-    complex const A = (
-            (sq(a1) + sq(a2) + sq(a3))*sq(cos_eps) -
-            sq(a1)  + sq(b1) -
-            (sq(b1) + sq(b2) + sq(b3))*sq(cos_eps) -
-            (a1*b1 + a2*b2 + a3*b3)*sq(cos_eps)*2i + a1*b1*2i
-            )/4.;
+    scalar const aa = dot(orb.a, orb.a);
+    scalar const bb = dot(orb.b, orb.b);
+    scalar const ab = dot(orb.a, orb.b);
+    scalar const ac = dot(orb.a, c);
+    scalar const bc = dot(orb.b, c);
+    scalar const cc = dot(c, c);
 
-    complex const B = (
-            (a1*c1 + a2*c2 + a3*c3)*sq(cos_eps)    -
-            (b1*c1 + b2*c2 + b3*c3)*sq(cos_eps)*1i +
-            (earthR*a1*sin_eps - a1*c1) -
-            (earthR*b1*sin_eps - b1*c1)*1i
-            );
+    complex const A = ((aa - bb - ab*2i)*sq(cos_eps) - sq(a1)  + sq(b1) + a1*b1*2i)/4.;
 
-    complex const C = (
-            (sq(c1) + sq(c2) + sq(c3))*sq(cos_eps)*2 +
-            (sq(a1) + sq(a2) + sq(a3))*sq(cos_eps)   +
-            (sq(b1) + sq(b2) + sq(b3))*sq(cos_eps)   -
-            2*sq(earthR) + 4*earthR*c1*sin_eps -
-            (sq(a1) + sq(b1) + 2*sq(c1))
-            )/2.;
+    complex const B = (ac -bc*1i)*sq(cos_eps) + (a1 - b1*1i)*earthR*sin_eps - a1*c1 + b1*c1*1i;
 
-    complex const D = (
-            (b1*c1 + b2*c2 + b3*c3)*sq(cos_eps)*1i +
-            (a1*c1 + a2*c2 + a3*c3)*sq(cos_eps)    +
-            (earthR*b1*sin_eps - b1*c1)*1i            +
-            (earthR*a1*sin_eps - a1*c1)
-            );
+    complex const C = ((aa + bb + 2.*cc)*sq(cos_eps) - 2.*sq(earthR) + 4.*earthR*c1*sin_eps - (sq(a1)+ sq(b1) + 2.*sq(c1)))/2.;
 
+    complex const D = (ac + bc*1i)*sq(cos_eps) + (a1 + b1*1i)*earthR*sin_eps - b1*c1*1i - a1*c1;
 
-    complex const E =(
-            (sq(a1) + sq(a2) + sq(a3))*sq(cos_eps)   -
-            sq(a1)  + sq(b1) -
-            (sq(b1) + sq(b2) + sq(b3))*sq(cos_eps)   +
-            (a1*b1 + a2*b2 + a3*b3)*sq(cos_eps)*2i - a1*b1*2i
-            )/4.;
+    complex const E =( (aa - bb + ab*1i)*sq(cos_eps) - sq(a1)  + sq(b1)   - a1*b1*2i)/4.;
 
+    return {B/A, C/A, D/A, E/A};
+};
 
+std::pair<std::array<scalar, 4>, unsigned short> calc_shadow_intersection_anomaly_sorted(Orbit const &orb, scalar const epsilon) {
+
+    auto const coefs = calc_coefficients(orb, epsilon);
     //Quartic solver call -> returns complex solutions of quartic eq:
-    auto const solution = quartic_solver(B / A, C / A, D / A, E / A);
+    auto const solution = quartic_solver(coefs[0], coefs[1], coefs[2], coefs[3]);
 
 
     unsigned short counter = 0;
     std::array<scalar, 4> anomaly{};
     //Get the intersection anomalies
     for(auto it:solution){
-        //abs(exp) = 1 <=> fi is real
-        if( fabs(fabs(it) - 1) < std::numeric_limits<scalar>::epsilon()){
+        //abs(exp) = 1 <=> fi is real - eto uzhasno
+        if( fabs(fabs(it) - 1) < 64*std::numeric_limits<scalar>::epsilon()){
             scalar E0 = atan2(it.imag(), it.real());
             //x>0 <=> point is in shadow
-            if(a1*cos(E0)+b1*sin(E0)+c1 > 0){
+            if(orb.a.x*( cos(E0) - orb.e) + orb.b.x*sin(E0) > 0){
                 anomaly[counter] = E0>orb.E0 ? E0 : E0+2*PI;
                 counter ++;
             }

@@ -19,7 +19,7 @@ using namespace std::complex_literals;
 
 
 complex complex_cbrt(complex const &z) {
-    return std::pow(z, 1. / 3.);
+    return std::pow(z, static_cast<scalar> (1./3.));
 }
 
 

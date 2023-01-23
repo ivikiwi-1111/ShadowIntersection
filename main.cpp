@@ -12,6 +12,7 @@ int main() {
     //epsilon is equal earthR/earth2sunR and depends on time
     auto v = get_intersection_times(orbit, 4.2666e-6);
     std::cout << "Times till intersection:" << std::endl;
+    std::cout << v.first[0] << " " << v.first[1];
 
     return 0;
 }
